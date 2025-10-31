@@ -8,19 +8,23 @@ using System.Threading.Tasks;
 
 namespace AM.Mind.Policies;
 
-public sealed class LinearSoftmaxPolicy : IPolicy<VectorObs, DiscreteAct>
+public sealed class LinearSoftmaxPolicy :
+    IPolicy<VectorObs, DiscreteAct>,
+    ISnapshottablePolicy<LinearSoftmaxPolicy.Snapshot>
 {
+    public sealed record Snapshot(int StateDim, int ActionDim, float[] W, float[] B);
+
     private readonly int _stateDim, _actionDim;
     private readonly float[] _W;    // [actionDim * stateDim]
     private readonly float[] _b;    // [actionDim]
     private readonly float _lr;
-    private readonly Random _rng = new(1234);
+    private readonly Random _rng;
 
     // scratch
     private readonly float[] _logits;
     private readonly float[] _probs;
 
-    public LinearSoftmaxPolicy(int stateDim, int actionDim, float learningRate = 1e-2f)
+    public LinearSoftmaxPolicy(int stateDim, int actionDim, float learningRate = 1e-2f, int seed = 1234)
     {
         if (stateDim <= 0) throw new ArgumentOutOfRangeException(nameof(stateDim));
         if (actionDim <= 0) throw new ArgumentOutOfRangeException(nameof(actionDim));
@@ -28,6 +32,7 @@ public sealed class LinearSoftmaxPolicy : IPolicy<VectorObs, DiscreteAct>
         _stateDim = stateDim;
         _actionDim = actionDim;
         _lr = learningRate;
+        _rng = new Random(seed);
 
         _W = new float[actionDim * stateDim];
         _b = new float[actionDim];
@@ -65,6 +70,16 @@ public sealed class LinearSoftmaxPolicy : IPolicy<VectorObs, DiscreteAct>
             for (int j = 0; j < _stateDim; j++)
                 _W[row + j] += scale * (gBias * x[j]);
         }
+    }
+
+    public Snapshot Export() => new(_stateDim, _actionDim, (float[])_W.Clone(), (float[])_b.Clone());
+
+    public void Import(Snapshot s)
+    {
+        if (s.StateDim != _stateDim || s.ActionDim != _actionDim)
+            throw new InvalidOperationException("Snapshot dims mismatch.");
+        Array.Copy(s.W, _W, _W.Length);
+        Array.Copy(s.B, _b, _b.Length);
     }
 
     private void ComputeLogits(ReadOnlySpan<float> x, float[] logits)

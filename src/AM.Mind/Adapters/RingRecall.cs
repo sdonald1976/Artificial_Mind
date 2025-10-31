@@ -9,9 +9,8 @@ using System.Threading.Tasks;
 namespace AM.Mind.Adapters;
 
 /// <summary>
-/// Simple in-RAM ring that:
-///  - stores the most recent observations (from appended experiences)
-///  - serves recent observations for context
+/// In-RAM ring buffer that stores recent observations and
+/// serves them as context. Also acts as a sink (Append).
 /// </summary>
 public sealed class RingRecall<TObs, TAct> : IRecall<TObs>, IExperienceSink<TObs, TAct>
 {
@@ -27,7 +26,7 @@ public sealed class RingRecall<TObs, TAct> : IRecall<TObs>, IExperienceSink<TObs
         _write = 0;
     }
 
-    // IExperienceSink<TObs,TAct> — we only keep observations for recall
+    // IExperienceSink<TObs,TAct>
     public void Append(in Experience<TObs, TAct> exp)
     {
         _ring[_write] = exp.Obs;
@@ -47,6 +46,7 @@ public sealed class RingRecall<TObs, TAct> : IRecall<TObs>, IExperienceSink<TObs
         return n;
     }
 
-    // Stub for future semantic recall
+    // Some compilers/projects don’t allow default interface impls.
+    // Provide an explicit stub to satisfy the interface.
     public int QueryByCue(ReadOnlySpan<float> cueVec, Span<TObs> destination, int k) => 0;
 }
