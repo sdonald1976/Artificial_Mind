@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace AM.Mind.Interfaces;
 
-public interface IRewardSystem
+public interface IRewardSystem<VectorObs, DiscreteAct>
 {
     float Evaluate(in Experience<VectorObs, DiscreteAct> e);
 }

@@ -13,13 +13,13 @@ public sealed class CoreMind
     private readonly IPolicy<VectorObs, DiscreteAct> _policy;
     private readonly IExperienceSink<VectorObs, DiscreteAct> _sink;
     private readonly IRecall<VectorObs> _recall;
-    private readonly IRewardSystem _reward;
+    private readonly IRewardSystem<VectorObs, DiscreteAct> _reward;
 
     public CoreMind(
         IPolicy<VectorObs, DiscreteAct> policy,
         IExperienceSink<VectorObs, DiscreteAct> sink,
         IRecall<VectorObs> recall,
-        IRewardSystem reward)
+        IRewardSystem<VectorObs, DiscreteAct> reward)
     {
         _policy = policy ?? throw new ArgumentNullException(nameof(policy));
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));

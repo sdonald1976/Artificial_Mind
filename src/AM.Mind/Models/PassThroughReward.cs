@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace AM.Mind.Models;
 
-public sealed class PassThroughReward<TObs, TAct> : IRewardSystem
+public sealed class PassThroughReward<TObs, TAct> : IRewardSystem<VectorObs, DiscreteAct>
 {
     public float Evaluate(in Experience<VectorObs, DiscreteAct> e)
     {

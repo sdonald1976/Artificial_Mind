@@ -11,40 +11,33 @@ namespace AM.Shell
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static async Task Main()
         {
-            // Wiring: RAM-only sink/recall; vector policy; pass-through reward.
-            var recall = new RingRecall<VectorObs, DiscreteAct>(capacity: 32);
-            var policy = new LinearSoftmaxPolicy(stateDim: 4, actionDim: 3, learningRate: 0.05f, seed: 42);
+            bool useDisk = true;             // flip to false for RAM-only
+            int stateDim = 4, actionDim = 3;
+
+            var recall = new RingRecall<VectorObs, DiscreteAct>(capacity: 128);
+            var policy = new LinearSoftmaxPolicy(stateDim, actionDim, learningRate: 0.05f, seed: 42);
             var reward = new PassThroughReward<VectorObs, DiscreteAct>();
-            IExperienceSink<VectorObs, DiscreteAct> sink = recall; // RAM-only
+
+            IExperienceSink<VectorObs, DiscreteAct> sink =
+                useDisk
+                ? new AM.Mind.Adapters.XLogExperienceSink(new AM.Mind.IO.Models.XLogWriter("data", "exp", 256L * 1024 * 1024))
+                : recall; // RAM-only
 
             var mind = new CoreMind(policy, sink, recall, reward);
-            var rng = new Random(0);
-            var obs = new VectorObs(new float[] { 0.1f, -0.2f, 0.3f, -0.4f });
+            var episodes = new EpisodeManager();
+            var clock = new BrainClock();
 
-            for (int step = 0; step < 10; step++)
-            {
-                var act = mind.Step(
-                    obs,
-                    episode: 1,
-                    step: step,
-                    ticks: DateTime.UtcNow.Ticks,
-                    envStep: a =>
-                    {
-                        // toy environment: reward +1 if action==0, else 0
-                        float r = (a.Index == 0) ? 1f : 0f;
-                        return (r, obs, terminal: step == 9);
-                    });
+            // toy environment: +1 if act==0, else 0; never terminates here
+            (float, VectorObs, bool) Env(DiscreteAct a)
+                => (a.Index == 0 ? 1f : 0f, new VectorObs(ReadOnlyMemory<float>.Empty), false);
 
-                Console.WriteLine($"t={step} act={act.Index}");
-            }
+            var runner = new MindRunner(mind, episodes, clock, stateDim, TimeSpan.FromMilliseconds(50), a => Env(a));
+            Console.CancelKeyPress += (_, __) => runner.Stop();
 
-            // Export/import snapshot demo:
-            var snapStore = new JsonSnapshotStore();
-            var snap = policy.Export();
-            snapStore.Save("policy.json", snap);
-            Console.WriteLine("Saved snapshot to policy.json");
+            Console.WriteLine("Running. Press Ctrl+C to stop...");
+            await runner.RunAsync();
         }
     }
 }
