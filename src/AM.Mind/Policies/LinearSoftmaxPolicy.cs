@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace AM.Mind.Policies;
 
-public sealed class LinearSoftmaxPolicy :
-    IPolicy<VectorObs, DiscreteAct>,
-    ISnapshottablePolicy<LinearSoftmaxPolicy.Snapshot>
+public sealed class LinearSoftmaxPolicy : IPolicy<VectorObs, DiscreteAct>, ISnapshottablePolicy<LinearSoftmaxPolicy.Snapshot>
 {
     public sealed record Snapshot(int StateDim, int ActionDim, float[] W, float[] B);
 
@@ -18,7 +16,7 @@ public sealed class LinearSoftmaxPolicy :
     private readonly float[] _W;    // [actionDim * stateDim]
     private readonly float[] _b;    // [actionDim]
     private readonly float _lr;
-    private readonly Random _rng;
+    private readonly IRng _rng;
 
     // scratch
     private readonly float[] _logits;
@@ -32,7 +30,7 @@ public sealed class LinearSoftmaxPolicy :
         _stateDim = stateDim;
         _actionDim = actionDim;
         _lr = learningRate;
-        _rng = new Random(seed);
+        _rng = new AM.Mind.Util.Rng(seed);
 
         _W = new float[actionDim * stateDim];
         _b = new float[actionDim];
@@ -40,7 +38,7 @@ public sealed class LinearSoftmaxPolicy :
         _probs = new float[actionDim];
 
         float scale = 1f / (float)Math.Sqrt(stateDim);
-        for (int i = 0; i < _W.Length; i++) _W[i] = (float)(NextGaussian() * scale * 0.1);
+        for (int i = 0; i < _W.Length; i++) _W[i] = (float)(_rng.NextGaussian() * scale * 0.1);
     }
 
     public DiscreteAct Decide(in VectorObs obs, ReadOnlySpan<VectorObs> recent)
@@ -108,6 +106,15 @@ public sealed class LinearSoftmaxPolicy :
         double r = _rng.NextDouble(), c = 0;
         for (int i = 0; i < probs.Length; i++) { c += probs[i]; if (r <= c) return i; }
         return probs.Length - 1;
+    }
+
+    // inside LinearSoftmaxPolicy
+    public float[] ProbsFor(in VectorObs obs)
+    {
+        var x = obs.Features.Span;
+        ComputeLogits(x, _logits);
+        SoftmaxInPlace(_logits, _probs);
+        return (float[])_probs.Clone();
     }
 
     private double NextGaussian()

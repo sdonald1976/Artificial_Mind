@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AM.Mind.Records;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,12 +7,11 @@ using System.Threading.Tasks;
 
 namespace AM.Mind.Interfaces;
 
-public interface IEnvironment
+public interface IEnvironment<TObs, TAct>
 {
-    // Provide current state as a fixed-length feature vector.
-    float[] GetState();
-    // Execute chosen action; returns scalar reward (can be delayed/estimated).
-    float Step(int actionIndex);
-    // Optional: termination hook.
-    bool IsDone { get; }
+    // Set to a fresh episode; returns the initial observation
+    TObs Reset();
+
+    // Apply an action; returns (reward, nextObs, terminal)
+    EnvStepResult Step(TAct act);
 }
