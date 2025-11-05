@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AM.Shell": {
+      "commandName": "Project",
+      "commandLineArgs": "lm"
+    }
+  }
+}
